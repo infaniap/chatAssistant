@@ -27,19 +27,20 @@ app.get("/api/files", (req, res) => {
   res.json(files.filter(f => allowedExtensions.some(ext => f.endsWith(ext))));
 });
 
-// Read a file (local or from GitHub)
-app.get("/api/file/*", async (req, res) => {
-  const filename = req.params[0];                 // path after /api/file/
+
+// Read a file - tries local first, then fetches from PyScript
+app.get("/api/file/:filename(*)", async (req, res) => {
+  const filename = req.params.filename; // Express now captures correctly
   const localPath = path.resolve(process.cwd(), filename);
 
   try {
-    // Try local file first
+    // Try local first
     if (fs.existsSync(localPath)) {
       const content = fs.readFileSync(localPath, "utf-8");
       return res.send(content);
     }
 
-    // Fallback to GitHub raw content
+    // Fallback: fetch from GitHub
     const githubBase =
       "https://raw.githubusercontent.com/infaniap/Componentize/main/";
     const githubURL = githubBase + filename;
@@ -57,6 +58,7 @@ app.get("/api/file/*", async (req, res) => {
     res.status(500).send("Error reading file.");
   }
 });
+
 
 // Chat endpoint - accepts message, fileContext, and systemPrompt
 app.post("/api/chat", async (req, res) => {
