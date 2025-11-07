@@ -1,105 +1,94 @@
 // server.js handles chat requests for the AI coding assistant and reads project files
 
-import "dotenv/config"; // load env variables (API KEY)
+import "dotenv/config"; // load env variables (local dev only - Render uses environment vars)
 import express from "express"; 
 import cors from "cors";
 import fs from "fs";
-//import fetch from "node-fetch";
 import OpenAI from "openai";
 
 // enabling communication between chatbot and server
 const app = express();
 app.use(cors());
-app.use("/chatbot", express.static("chatbot"));
 app.use(express.json());
 
-console.log("Loaded key prefix:", process.env.OPENAI_API_KEY?.slice(0, 7)); // verify key is loaded
+console.log("Loaded key prefix:", process.env.OPENAI_API_KEY?.slice(0, 7));
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-// Your PyScript deployment URL
-const PYSCRIPT_BASE = "https://infania.pyscriptapps.com/bones-copy/latest";
+// GitHub raw content base URL for your Componentize project
+const GITHUB_RAW_BASE = "https://raw.githubusercontent.com/infaniap/bones-copy/main";
 
 // List files in the project directory
-const allowedExtensions = [".js", ".html", ".css", ".py", ".toml", ".json", ".md", ".png", ".svg"];
+const allowedExtensions = [".js", ".html", ".css", ".py", ".toml", ".json", ".md"];
 
 app.get("/api/files", (req, res) => {
-  const files = fs.readdirSync(".");
-  res.json(files.filter(f => allowedExtensions.some(ext => f.endsWith(ext))));
-});
-
-
-// Read a file - tries local first, then fetches from PyScript
-app.get("/api/file/:filename(*)", async (req, res) => {
-  const filename = req.params.filename; // Express now captures correctly
-  const localPath = path.resolve(process.cwd(), filename);
-
   try {
-    // Try local first
-    if (fs.existsSync(localPath)) {
-      const content = fs.readFileSync(localPath, "utf-8");
-      return res.send(content);
-    }
-
-    // Fallback: fetch from GitHub
-    const githubBase =
-      "https://raw.githubusercontent.com/infaniap/Componentize/main/";
-    const githubURL = githubBase + filename;
-
-    const response = await fetch(githubURL);
-    if (response.ok) {
-      const content = await response.text();
-      return res.send(content);
-    }
-
-    console.warn("GitHub fetch failed:", response.status, githubURL);
-    res.status(404).send("File not found on server or GitHub.");
+    const files = fs.readdirSync(".");
+    res.json(files.filter(f => allowedExtensions.some(ext => f.endsWith(ext))));
   } catch (err) {
-    console.error(`Error reading file ${filename}:`, err);
-    res.status(500).send("Error reading file.");
+    res.json([]); // Return empty array if directory read fails
   }
 });
 
+// Read a file - tries local first, then fetches from GitHub
+app.get("/api/file/*", async (req, res) => {
+  try {
+    const filename = req.params[0]; // Get everything after /api/file/
+    
+    // Try local first
+    if (fs.existsSync(filename)) {
+      console.log(`✓ Found locally: ${filename}`);
+      const content = fs.readFileSync(filename, "utf-8");
+      return res.send(content);
+    }
+    
+    // If not local, fetch from GitHub using native fetch
+    const githubUrl = `${GITHUB_RAW_BASE}/${filename}`;
+    console.log(`→ Fetching from GitHub: ${githubUrl}`);
+    
+    const response = await fetch(githubUrl);
+    
+    if (response.ok) {
+      const content = await response.text();
+      console.log(`✓ Fetched from GitHub: ${filename}`);
+      return res.send(content);
+    }
+    
+    console.error(`✗ File not found: ${filename}`);
+    res.status(404).send("File not found locally or on GitHub");
+    
+  } catch (err) {
+    console.error(`Error loading file:`, err.message);
+    res.status(500).send("Error loading file");
+  }
+});
 
 // Chat endpoint - accepts message, fileContext, and systemPrompt
 app.post("/api/chat", async (req, res) => {
   try {
     const { message, fileContext, systemPrompt } = req.body;
 
-    // Default system prompt if none provided
-    const defaultSystemPrompt = "You are an assistant that helps with web development, PyScript, and component integration. Provide clear, concise code examples.";
-    
+    const defaultSystemPrompt = "You are an assistant that helps with web development, PyScript, and component integration.";
     const systemMessage = systemPrompt || defaultSystemPrompt;
 
-    console.log(`💬 Chat request: "${message.substring(0, 50)}..."`);
+    console.log(`💬 Chat: "${message.substring(0, 50)}..."`);
     
-    // Send prompt to OpenAI API
     const response = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       messages: [
-        // System prompt to guide the AI's behavior
         { role: "system", content: systemMessage },
-        // User includes message and file context if any
-        { 
-          role: "user", 
-          content: `User message: ${message}\n\nFile Context:\n${fileContext || "No file context provided."}` 
-        }
+        { role: "user", content: `User message: ${message}\n\nFile Context:\n${fileContext || "No file context."}` }
       ]
     });
     
     console.log(`✓ AI responded`);
-    
-    // Return AI response to frontend
     res.json({ reply: response.choices[0].message.content });
     
   } catch (error) {
-    console.error("OpenAI API error:", error.message);
-    res.status(500).json({ 
-      error: "Failed to get AI response", 
-      details: error.message 
-    });
+    console.error("OpenAI error:", error.message);
+    res.status(500).json({ error: "AI request failed", details: error.message });
   }
 });
 
-
-// Start server
-app.listen(3000, () => console.log("🤖 AI dev assistant running on http://localhost:3000"));
+// Use PORT from Render environment or default to 3000
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`🤖 AI assistant running on port ${PORT}`));

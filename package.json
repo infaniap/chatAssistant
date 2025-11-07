@@ -1,5 +1,5 @@
 {
-  "name": "chatAssistant",
+  "name": "chatassistant",
   "version": "1.0.0",
   "type": "module",
   "description": "",
@@ -7,10 +7,13 @@
   "scripts": {
     "start": "node server.js"
   },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
   "dependencies": {
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "express": "^5.1.0",
-    "openai": "^6.8.1"
+    "openai": "^6.7.0"
   }
 }
