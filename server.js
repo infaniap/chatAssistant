@@ -14,8 +14,8 @@ app.use(express.json());
 console.log("Loaded key prefix:", process.env.OPENAI_API_KEY?.slice(0, 7));
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-// GitHub raw content base URL for your Componentize project
-const GITHUB_RAW_BASE = "https://raw.githubusercontent.com/infaniap/bones-copy/main";
+// PyScript deployment URL for your Componentize project
+const PYSCRIPT_BASE = "https://infania.pyscriptapps.com/bones-copy/latest";
 
 // List files in the project directory
 const allowedExtensions = [".js", ".html", ".css", ".py", ".toml", ".json", ".md"];
@@ -29,7 +29,7 @@ app.get("/api/files", (req, res) => {
   }
 });
 
-// Read a file - tries local first, then fetches from GitHub
+// Read a file - tries local first, then fetches from PyScript
 app.get("/api/file/*", async (req, res) => {
   try {
     const filename = req.params[0]; // Get everything after /api/file/
@@ -41,20 +41,20 @@ app.get("/api/file/*", async (req, res) => {
       return res.send(content);
     }
     
-    // If not local, fetch from GitHub using native fetch
-    const githubUrl = `${GITHUB_RAW_BASE}/${filename}`;
-    console.log(`→ Fetching from GitHub: ${githubUrl}`);
+    // If not local, fetch from PyScript deployment
+    const pyscriptUrl = `${PYSCRIPT_BASE}/${filename}`;
+    console.log(`→ Fetching from PyScript: ${pyscriptUrl}`);
     
-    const response = await fetch(githubUrl);
+    const response = await fetch(pyscriptUrl);
     
     if (response.ok) {
       const content = await response.text();
-      console.log(`✓ Fetched from GitHub: ${filename}`);
+      console.log(`✓ Fetched from PyScript: ${filename}`);
       return res.send(content);
     }
     
     console.error(`✗ File not found: ${filename}`);
-    res.status(404).send("File not found locally or on GitHub");
+    res.status(404).send("File not found locally or on PyScript");
     
   } catch (err) {
     console.error(`Error loading file:`, err.message);
