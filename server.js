@@ -28,39 +28,37 @@ app.get("/api/files", (req, res) => {
 });
 
 
-// Read a file - tries local first, then fetches from PyScript
-app.get("/api/file/:filename", async (req, res) => {
+// Read a file (local or from GitHub)
+app.get("/api/file/:filename(*)", async (req, res) => {
+  const filename = req.params.filename;
+  const localPath = path.resolve(process.cwd(), filename);
+
   try {
-    const filename = req.params.filename;
-    
-    // Try local first
-    if (fs.existsSync(filename)) {
-      console.log(`✓ Found locally: ${filename}`);
-      const content = fs.readFileSync(filename, "utf-8");
+    // Try local read first
+    if (fs.existsSync(localPath)) {
+      const content = fs.readFileSync(localPath, "utf-8");
       return res.send(content);
     }
-    
-    // If not local, fetch from PyScript deployment
-    const pyscriptUrl = `${PYSCRIPT_BASE}/${filename}`;
-    console.log(`→ Fetching from PyScript: ${pyscriptUrl}`);
-    
-    const response = await fetch(pyscriptUrl);
-    
+
+    // If not found locally, try fetching from GitHub raw URL
+    const githubBase =
+      "https://raw.githubusercontent.com/infaniap/Componentize/main/";
+    const githubURL = githubBase + filename;
+
+    const response = await fetch(githubURL);
+
     if (response.ok) {
       const content = await response.text();
-      console.log(`✓ Fetched from PyScript: ${filename}`);
       return res.send(content);
+    } else {
+      console.warn("GitHub fetch failed:", response.status, githubURL);
+      res.status(404).send("File not found on server or GitHub.");
     }
-    
-    console.error(`✗ File not found: ${filename}`);
-    res.status(404).send("File not found locally or on PyScript");
-    
   } catch (err) {
-    console.error(`Error loading file ${req.params.filename}:`, err.message);
-    res.status(500).send("Error loading file");
+    console.error(`Error reading file ${filename}:`, err);
+    res.status(500).send("Error reading file.");
   }
 });
-
 
 // Chat endpoint - accepts message, fileContext, and systemPrompt
 app.post("/api/chat", async (req, res) => {
