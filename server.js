@@ -4,7 +4,7 @@ import "dotenv/config"; // load env variables (API KEY)
 import express from "express"; 
 import cors from "cors";
 import fs from "fs";
-import fetch from "node-fetch";
+//import fetch from "node-fetch";
 import OpenAI from "openai";
 
 // enabling communication between chatbot and server
