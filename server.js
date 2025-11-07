@@ -27,33 +27,31 @@ app.get("/api/files", (req, res) => {
   res.json(files.filter(f => allowedExtensions.some(ext => f.endsWith(ext))));
 });
 
-
 // Read a file (local or from GitHub)
-app.get("/api/file/:filename(*)", async (req, res) => {
-  const filename = req.params.filename;
+app.get("/api/file/*", async (req, res) => {
+  const filename = req.params[0];                 // path after /api/file/
   const localPath = path.resolve(process.cwd(), filename);
 
   try {
-    // Try local read first
+    // Try local file first
     if (fs.existsSync(localPath)) {
       const content = fs.readFileSync(localPath, "utf-8");
       return res.send(content);
     }
 
-    // If not found locally, try fetching from GitHub raw URL
+    // Fallback to GitHub raw content
     const githubBase =
       "https://raw.githubusercontent.com/infaniap/Componentize/main/";
     const githubURL = githubBase + filename;
 
     const response = await fetch(githubURL);
-
     if (response.ok) {
       const content = await response.text();
       return res.send(content);
-    } else {
-      console.warn("GitHub fetch failed:", response.status, githubURL);
-      res.status(404).send("File not found on server or GitHub.");
     }
+
+    console.warn("GitHub fetch failed:", response.status, githubURL);
+    res.status(404).send("File not found on server or GitHub.");
   } catch (err) {
     console.error(`Error reading file ${filename}:`, err);
     res.status(500).send("Error reading file.");
