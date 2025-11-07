@@ -30,18 +30,16 @@ app.get("/api/files", (req, res) => {
 });
 
 // Read a file - tries local first, then fetches from PyScript
-app.get("/api/file/*", async (req, res) => {
+app.get("/api/file/:path(.*)", async (req, res) => {
   try {
-    const filename = req.params[0]; // Get everything after /api/file/
+    const filename = req.params.path;
     
-    // Try local first
     if (fs.existsSync(filename)) {
       console.log(`✓ Found locally: ${filename}`);
       const content = fs.readFileSync(filename, "utf-8");
       return res.send(content);
     }
     
-    // If not local, fetch from PyScript deployment
     const pyscriptUrl = `${PYSCRIPT_BASE}/${filename}`;
     console.log(`→ Fetching from PyScript: ${pyscriptUrl}`);
     
@@ -54,7 +52,7 @@ app.get("/api/file/*", async (req, res) => {
     }
     
     console.error(`✗ File not found: ${filename}`);
-    res.status(404).send("File not found locally or on PyScript");
+    res.status(404).send("File not found");
     
   } catch (err) {
     console.error(`Error loading file:`, err.message);
