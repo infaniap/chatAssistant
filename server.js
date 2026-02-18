@@ -11,7 +11,6 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-console.log("Loaded key prefix:", process.env.OPENAI_API_KEY?.slice(0, 7));
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 // PyScript deployment URL for your Componentize project
